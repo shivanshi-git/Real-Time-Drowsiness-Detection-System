@@ -427,6 +427,7 @@ def main():
         elif key == ord("m"):
             show_heatmap = not show_heatmap
 
+    alarm_engine.stop_alarm()
     cap.release()
     cv2.destroyAllWindows()
 
