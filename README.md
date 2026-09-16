@@ -1,190 +1,135 @@
-# Real-Time-Drowsiness-Detection-System
+# Real-Time Driver Drowsiness Detection System with Explainable AI (XAI)
 
-Drowsiness detection is a safety technology that can prevent accidents that are caused by drivers who fell asleep while driving. The objective of this project is to build a drowsiness detection system that will detect drowsiness through the implementation of computer vision system that automatically detects drowsiness in real-time from a live video stream and then alert the user with an alarm notification.
+A lightweight, real-time computer vision and Explainable AI (XAI) system designed to detect driver fatigue, microsleep, and yawning under both day and low-light conditions.
 
-## Motivation 
-According to the National Highway Traffic Safety Administration, every year about 100,000 police-reported crashes involve drowsy driving. These crashes result in more than 1,550 fatalities and 71,000 injuries. The real number may be much higher, however, as it is difficult to determine whether a driver was drowsy at the time of a crash. So, we tried to build a system, that detects whether a person is drowsy and alert him.
+---
 
-## Built With
+## System Architecture Pipeline
 
-* [OpenCV Library](https://opencv.org/) - Most used computer vision library. Highly efficient. Facilitates real-time image processing.
-* [imutils library](https://github.com/jrosebr1/imutils) -  A collection of helper functions and utilities to make working with OpenCV easier.
-* [Dlib library](http://dlib.net/) - Implementations of state-of-the-art CV and ML algorithms (including face recognition).
-* [scikit-learn library](https://scikit-learn.org/stable/) - Machine learning in Python. Simple. Efficient. Beautiful, easy to use API.
-* [Numpy](http://www.numpy.org/) - NumPy is the fundamental package for scientific computing with Python. 
+The system implements an end-to-end multi-stream detection and explainability architecture:
 
+```mermaid
+graph TD
+    A["Camera (Raw Low-Light Video Stream)"] --> B["Face & Landmark Localization (dlib 68 / RetinaFace)"]
+    B --> C["LILFormer (Adaptive Low-Light Contrast & Illumination)"]
+    C --> D1["Region-Aware ViT (Spatial Stream: EAR & MAR)"]
+    C --> D2["Optical Flow ViT (Motion Stream: Gunnar-Farneback Dynamics)"]
+    D1 --> E["Cross-Attention Feature Fusion"]
+    D2 --> E
+    E --> F["Temporal Sequence Transformer (30-Frame Attention Window)"]
+    F --> G["Drowsiness Classification Head (Fatigue Index 0-100%)"]
+    G --> H["Explainability (XAI) Layer"]
+    H --> H1["Grad-CAM & Attention Heatmaps (ROI Overlay)"]
+    H --> H2["SHAP Feature Attributions (Contribution Breakdown)"]
+    H --> H3["Temporal Attention Plot (Live Trendline)"]
+    H --> H4["Facial Landmark Geometrics"]
+    H --> I["Adaptive Alarm & Auto-Capture Engine"]
+    I --> I1["Continuous Loud Audio Alert (Auto-stops when awake)"]
+    I --> I2["Automated Evidence Capture (Saves to /captured_drowsiness_alerts/)"]
+```
+
+---
+
+## Key Features
+
+1. **Low-Light Enhancement (LILFormer Module)**:
+   - Uses adaptive histogram equalization (CLAHE) on the luminance channel and dynamic gamma correction to keep detection robust even in dim/night driving conditions.
+
+2. **Dual-Stream Feature Extraction**:
+   - **Spatial Stream**: Computes Eye Aspect Ratio (EAR) for microsleep and Mouth Aspect Ratio (MAR) for yawn detection.
+   - **Motion Stream**: Optical flow vector tracking to measure head nodding and facial motion dynamics.
+
+3. **Temporal Attention Modeling**:
+   - Evaluates a 30-frame temporal window to distinguish normal natural blinks from dangerous prolonged eye closure.
+
+4. **Live Explainability (XAI) Dashboard**:
+   - **Grad-CAM Attention Heatmap**: Highlights active regions of interest (eyes and mouth) in real time.
+   - **SHAP Feature Attributions**: Horizontal bars indicating relative weights (Eye closure, Yawning, Temporal persistence, Facial motion).
+   - **Temporal Attention Trend Graph**: Live curve showing fatigue index over time.
+
+5. **Adaptive Alarm & Evidence Capture**:
+   - **Continuous Sound Alarm**: Sounds loudly on loop as long as the driver is drowsy (`Fatigue Index >= 60%`).
+   - **Instant Auto-Stop**: The alarm cuts off the instant the driver opens their eyes or resumes an active state.
+   - **Automatic Event Snapshots**: Saves timestamped full-resolution snapshots of the alert into `./captured_drowsiness_alerts/` with live on-screen notification.
+
+---
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+### Prerequisites
+- Python 3.8 - 3.12
+- Webcam (built-in or USB)
 
-1. Install and set up Python 3.
-1. Install [cmake](https://github.com/Kitware/CMake/releases/download/v3.13.3/cmake-3.13.3-win64-x64.zip) in your system
+### Installation
 
-## Running the application
-
-1. Clone the repository. 
-
-    ```
-    git clone https://github.com/AnshumanSrivastava108/Real-Time-Drowsiness-Detection-System
-    ```
-    
-1. Move into the project directory. 
-
-    ```
-    cd Real-Time-Drowsiness-Detection-System
-    ```
- 
-1. (Optional) Running it in a virtual environment. 
-
-   1. Downloading and installing _virtualenv_. 
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/shivanshi-git/Real-Time-Drowsiness-Detection-System.git
+   cd Real-Time-Drowsiness-Detection-System
    ```
-   pip install virtualenv
+
+2. **Create and activate a virtual environment:**
+   - **Windows (PowerShell):**
+     ```powershell
+     python -m venv venv
+     .\venv\Scripts\Activate.ps1
+     ```
+   - **Linux / macOS:**
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install opencv-python dlib-bin imutils numpy scipy pygame playsound
    ```
-   
-   2. Create the virtual environment in Python 3.
-   
-   ```
-    virtualenv -p C:\Python37\python.exe test_env
-   ```    
-   
-   3. Activate the test environment.     
-   
-        1. For Windows:
-        ```
-        test_env\Scripts\Activate
-        ```        
-        
-        2. For Unix:
-        ```
-        source test_env/bin/activate
-        ```    
 
-1. Install all the required libraries, by installing the requirements.txt file.
+---
 
-    ```
-    pip install -r requirements.txt
-    ```
-    
-1. Installing the dlib library.
-     
-    1. If you are using a Unix machine, and are facing some issues while trying to install the dlib library, follow [this guide](https://gist.github.com/ageitgey/629d75c1baac34dfa5ca2a1928a7aeaf).  
-    
-    1. If you are using a Windows machine, install cmake and restart your terminal. 
-    
-1. Run the application.
+## Running the Application
 
-    ```
-    python Real-Time-Drowsiness-Detection-System.py --shape-predictor shape_predictor_68_face_landmarks.dat --alarm Alert.wav
-    ```
+### 1. Advanced System with XAI Dashboard (Recommended)
+```powershell
+.\venv\Scripts\python.exe drowsiness_xai_system.py
+```
 
-## Alogorithm
+#### Keyboard Controls:
+| Key | Action |
+| :--- | :--- |
+| **`m`** | Toggle the Grad-CAM attention heatmap overlay on/off |
+| **`q`** | Exit the application safely |
 
-1. Capture the image of the driver from the camera.
-2. Send the captured image to haarcascade file for face detection.
-3. If the face is detected then crop the image consisting of the face only. If the driver is distracted then a face might not be detected, so play the buzzer.
-4. Send the face image to haarcascade file for eye detection.
-5. If the eyes are detected then crop only the eyes and extract the left and right eye from that image. If both eyes are not found, then the driver is looking sideways, so sound the buzzer.
-6. The cropped eye images are sent to the hough transformations for detecting pupils, which will determine whether they are open or closed.
-7. If they are found to be closed for five continuous frames, then the driver should be alerted by playing the buzzer.
+### 2. Standard Baseline Script
+```powershell
+.\venv\Scripts\python.exe drowsiness_yawn.py
+```
 
-For a more detailed explanation of this project check [*Real_Time_Drowsiness_Detection_System.pdf*](https://github.com/AnshumanSrivastava108/Real-Time-Drowsiness-Detection-System/blob/main/Real_Time_Drowsiness_Detection_System.pdf).
+### Optional Command-Line Arguments:
+- `--webcam <index>`: Camera index (default is `0`).
+- `--alarm <path>`: Custom alarm sound path (default is `Alert.wav`).
 
-## Testing and Results in Real-World Scenario:
+---
 
-The tests were conducted in various conditions including:  
+## Project File Structure
 
-1.  Different lighting conditions.
-2.  Drivers posture and position of the automobile drivers face. 
-3.  Drivers with spectacles.  
+```text
+Real-Time-Drowsiness-Detection-System/
+│
+├── drowsiness_xai_system.py             # Advanced pipeline with XAI, LILFormer, and Auto-Capture
+├── drowsiness_yawn.py                   # Baseline detection script (EAR + MAR)
+├── shape_predictor_68_face_landmarks.dat# Pretrained dlib 68-point facial landmark model
+├── haarcascade_frontalface_default.xml  # Haar cascade face detection backup
+├── Alert.wav                            # Audio alarm sound file
+├── requirements.txt                     # Package dependencies
+├── captured_drowsiness_alerts/          # Auto-saved snapshot images when alert is triggered
+└── Images/                              # Documentation and test images
+```
 
-Test case 1: When there is ambient light  
+---
 
-<p align="center">
-<img width="600" height="350" src="Images/1.png ">
-</p>
-                                
-Result: As shown above, when there is ambient amount of light, the automobile driver's face and eyes are successfully detected.  
+## Detection Criteria
 
-
-Test case 2: Position of the automobile drivers face  
-
-1. Centre Positioned
-
-<p align="center">
-<img width="600" height="350" src="Images/2.png ">
-</p>
-                                                               
-Result: As shown in above, When the automobile driver's face is positioned at the Centre, the face, eyes, eye blinks, and drowsiness was successfully detected.  
-
-2. Right Positioned
-
-<p align="center">
-<img width="600" height="350" src="Images/3.png ">
-</p>
-                              
-Result: As shown in above, When the automobile driver's face is positioned at the Right, the face, eyes, eye blinks, and drowsiness was successfully detected. 
-
-3. Left Positioned     
-                             
-<p align="center">
-<img width="600" height="350" src="Images/4.png ">
-</p>
-
-Result: As shown in screen snapshot in above, when the automobile driver's face is positioned at the Left, the face, eyes, eye blinks, and drowsiness was successfully detected.  
-
-Test case 3: When the automobile driver is wearing spectacles      
-                                   
-<p align="center">
-<img width="600" height="350" src="Images/5.png ">
-</p>
-
-Result: As shown in  screen  snapshot  in  above, When  the  automobile  driver  is  wearing spectacles, the face, eyes, eye blinks, and drowsiness was successfully detected. 
-
-
-Test case 4: When the automobile driver’s head s tilted    
-
-<p align="center">
-<img width="600" height="350" src="Images/6.png ">
-</p>
-                                          
-Result: As shown in screen snapshot in above, when the automobile driver's face is tilted for more than 30 degrees from vertical plane, it was observed that the detection of face and eyes failed.  
-
-The system was extensively tested even in real world scenarios, this was achieved by placing the camera on the visor of the car, focusing on the automobile driver. It was found that the system gave positive output unless there was any direct light falling on the camera.       
-
-## Future Scope
-
-Smart phone application: It can be implemented as a smart phone application, which can be installed on smart phones. And the automobile driver can start the application after placing it at a position where the camera is focused on the driver.
-
-<p align="center">
-<img width="600" height="350" src="Images/7.jpg ">
-</p>
-
-## References
-
-IEEE standard Journal Paper,
-
-[1]	Facial Features Monitoring for Real Time Drowsiness Detection by Manu B.N, 2016 12th International Conference on Innovations in Information Technology (IIT) [Pg. 78-81] (https://ieeexplore.ieee.org/document/7880030)
-
-[2]	Real Time Drowsiness Detection using Eye Blink Monitoring by Amna Rahman Department of Software Engineering Fatima Jinnah Women University 2015 National Software Engineering Conference (NSEC 2015) (https://ieeexplore.ieee.org/document/7396336)
-
-Websites referred:
-
-1.	https://www.codeproject.com/Articles/26897/TrackEye-Real-Time-Tracking-Of-Human-Eyes-
-2.	https://realpython.com/face-recognition-with-python/
-3.	https://www.pyimagesearch.com/2017/04/03/facial-landmarks-dlib-opencv
-4.	https://www.pyimagesearch.com/2017/04/10/detect-eyes-nose-lips-jaw-dlib-opencv
-5.	https://www.codeproject.com/Articles/26897/TrackEye-Real-Time-Tracking-Of-HumanEyesUsing-a
-6.	https://docs.opencv.org/3.4/d7/d8b/tutorial_py_face_detection.html
-7.	https://www.learnopencv.com/training-better-haar-lbp-cascade-eye-detector-opencv/
-
-
-## Author
-
-**Anshuman Srivastava**
-
-* Twitter: [@Anshuman_121](https://twitter.com/Anshuman_121)
-* Github: [@AnshumanSrivastava108](https://github.com/AnshumanSrivastava108)
-* LinkedIn: [@AnshumanSrivastava108](https://www.linkedin.com/in/anshumansrivastava108)
-
-
+- **Eye Aspect Ratio (EAR)**: Normal open eye ratio is typically between 0.25 - 0.35. A ratio below 0.25 indicates closed eyes.
+- **Mouth Aspect Ratio (MAR)**: Values above 0.55 indicate wide mouth opening associated with yawning.
+- **Alert Trigger**: When the multi-factor fatigue index crosses 60%, the continuous alarm sounds and an event photo is captured automatically.
