@@ -23,6 +23,8 @@ import dlib
 import numpy as np
 import argparse
 import time
+import os
+from datetime import datetime
 import collections
 from threading import Thread
 from scipy.spatial import distance as dist
@@ -210,7 +212,7 @@ def generate_gradcam_heatmap(frame_shape, eye_left, eye_right, mouth, attention_
     return colored_heatmap
 
 
-def draw_dashboard(display, drowsy_prob, ear, mar, shap_values, score_history, fps):
+def draw_dashboard(display, drowsy_prob, ear, mar, shap_values, score_history, fps, capture_notify="", capture_count=0):
     h, w = display.shape[:2]
     
     # 1. Header Banner
@@ -295,6 +297,14 @@ def draw_dashboard(display, drowsy_prob, ear, mar, shap_values, score_history, f
     cv2.putText(display, "Press 'Q' to Exit | 'M' Toggle Heatmap Overlay", (15, h - 12),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, (160, 160, 160), 1)
 
+    if capture_notify:
+        cv2.rectangle(display, (panel_x - 10, h - 35), (w - 10, h - 15), (0, 140, 0), -1)
+        cv2.putText(display, f"{capture_notify}", (panel_x, h - 22),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.38, (255, 255, 255), 1)
+    else:
+        cv2.putText(display, f"Captured Alerts: {capture_count}", (panel_x, h - 22),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (140, 200, 140), 1)
+
 
 # ----------------- Main Execution -----------------
 def main():
@@ -326,6 +336,16 @@ def main():
     show_heatmap = True
     prev_time = time.time()
 
+    # Alert Snapshot Capture Configuration
+    capture_dir = "captured_drowsiness_alerts"
+    os.makedirs(capture_dir, exist_ok=True)
+    last_capture_time = 0
+    capture_cooldown = 3.0  # seconds between captures to avoid filling disk
+    capture_count = 0
+    last_capture_notify = ""
+    last_capture_notify_time = 0
+
+    print(f" -> Drowsiness alert snapshots will be saved in: ./{capture_dir}/")
     print(" Pipeline running successfully! Press 'q' to quit, 'm' to toggle Grad-CAM heatmap.")
     print("=========================================================")
 
@@ -399,9 +419,20 @@ def main():
                 # Blend heat map gently
                 cv2.addWeighted(heatmap, 0.35, display_frame, 0.65, 0, display_frame)
 
-            # 4. Adaptive Real-Time Alarm Engine Trigger
+            # 4. Adaptive Real-Time Alarm Engine Trigger & Snapshot Capture
             if drowsy_prob >= 0.60:
                 alarm_engine.start_alarm()
+                # Capture snapshot when alert is active (with 3s cooldown)
+                curr_time_sec = time.time()
+                if curr_time_sec - last_capture_time > capture_cooldown:
+                    last_capture_time = curr_time_sec
+                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = os.path.join(capture_dir, f"drowsy_event_{timestamp_str}.jpg")
+                    cv2.imwrite(filename, display_frame)
+                    capture_count += 1
+                    last_capture_notify = f"Snapshot Saved: {os.path.basename(filename)}"
+                    last_capture_notify_time = curr_time_sec
+                    print(f" [ALERT CAPTURE] Saved drowsiness snapshot to {filename}")
             else:
                 alarm_engine.stop_alarm()
             
@@ -416,8 +447,15 @@ def main():
         fps = 1.0 / (curr_time - prev_time) if (curr_time - prev_time) > 0 else 30.0
         prev_time = curr_time
 
+        # Expire capture notification badge after 2.5 seconds
+        active_notify = ""
+        if last_capture_notify and (curr_time - last_capture_notify_time < 2.5):
+            active_notify = last_capture_notify
+
         # Render Modern XAI Dashboard Overlay
-        draw_dashboard(display_frame, drowsy_prob, ear, mar, shap_values, temporal_transformer.score_history, fps)
+        draw_dashboard(display_frame, drowsy_prob, ear, mar, shap_values,
+                       temporal_transformer.score_history, fps,
+                       capture_notify=active_notify, capture_count=capture_count)
 
         cv2.imshow("Advanced Drowsiness Detection System (XAI Architecture)", display_frame)
 
