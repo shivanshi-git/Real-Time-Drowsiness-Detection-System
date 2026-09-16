@@ -68,7 +68,7 @@ def lip_distance(shape):
 ap = argparse.ArgumentParser()
 ap.add_argument("-w", "--webcam", type=int, default=0,
                 help="index of webcam on system")
-ap.add_argument("-a", "--alarm", type=str, default="D:\Files\last desktop\Drowsiness-Detection-System\Alert.WAV", help="path alarm .WAV file")
+ap.add_argument("-a", "--alarm", type=str, default="Alert.wav", help="path alarm .WAV file")
 args = vars(ap.parse_args())
 
 EYE_AR_THRESH = 0.3
@@ -80,30 +80,27 @@ saying = False
 COUNTER = 0
 
 print("-> Loading the predictor and detector...")
-#detector = dlib.get_frontal_face_detector()
-detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")    #Faster but less accurate
+detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
 
 print("-> Starting Video Stream")
-vs = VideoStream(src=args["webcam"]).start()
+# Use cv2.CAP_DSHOW for stable Windows webcam capture
+vs = VideoStream(src=args["webcam"] + cv2.CAP_DSHOW).start()
 #vs= VideoStream(usePiCamera=True).start()       //For Raspberry Pi
 time.sleep(1.0)
 
 while True:
 
     frame = vs.read()
+    if frame is None:
+        continue
     frame = imutils.resize(frame, width=450)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    #rects = detector(gray, 0)
-    rects = detector.detectMultiScale(gray, scaleFactor=1.1,
-		minNeighbors=5, minSize=(30, 30),
-		flags=cv2.CASCADE_SCALE_IMAGE)
+    rects = detector(gray, 0)
 
-    #for rect in rects:
-    for (x, y, w, h) in rects:
-        rect = dlib.rectangle(int(x), int(y), int(x + w),int(y + h))
+    for rect in rects:
 
         shape = predictor(gray, rect)
         shape = face_utils.shape_to_np(shape)
@@ -132,8 +129,8 @@ while True:
                     if args["alarm"] != "":
                         t = Thread(target=sound_alarm,
                                    args=(args["alarm"],))
-                    t.deamon = True
-                    t.start()
+                        t.daemon = True
+                        t.start()
 
                 cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
@@ -150,8 +147,8 @@ while True:
                     if args["alarm"] != "":
                         t = Thread(target=sound_alarm,
                                    args=(args["alarm"],))
-                    t.deamon = True
-                    t.start()
+                        t.daemon = True
+                        t.start()
         else:
             alarm_status2 = False
 
