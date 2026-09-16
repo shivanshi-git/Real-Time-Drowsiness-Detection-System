@@ -30,6 +30,10 @@ graph TD
 
 ---
 
+> 📖 **In-Depth Theory & Math**: For complete mathematical formulations, XAI foundations, and architectural theory, check out [**`concepts.md`**](concepts.md).
+
+---
+
 ## Key Features
 
 1. **Low-Light Enhancement (LILFormer Module)**:
